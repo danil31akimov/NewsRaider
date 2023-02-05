@@ -7,13 +7,19 @@
 
 import UIKit
 
-class ViewController: UIViewController {
+ final class ViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view.
     }
-
-
+     
+     override func viewDidAppear(_ animated: Bool) {
+         super.viewWillAppear(animated)
+         let service = NewsService()
+         let viewModel = HeadlinesViewModel(service: service)
+         let viewController = HeadlinesViewController(viewModel: viewModel)
+         viewController.modalPresentationStyle = .fullScreen
+         present(viewController, animated: false)
+     }
 }
 
