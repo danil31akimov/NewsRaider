@@ -51,30 +51,41 @@ final class AdsListViewModel {
         service: AdsServiceType
     ) {
         self.service = service
-            
-        var page = 1
         
-        ads = nextPageLoadingTrigger
-            .startWith(())
-            .flatMap { () -> Single<[Ad]> in
-                service.getAdsList(page: page, limit: PAGE_LIMIT)
-            }
-            .do(onNext: { _ in
-                
-                page += 1
-                
-            })
-            .map { ads -> [AdsSection] in
-                return [
-                    AdsSection(
-                    identity: UUID().uuidString,
-                    items: ads.map(AdListItem.ad)
-                    )
-               ]
-            }
+        ads = AdsListViewModel.createAdsLoader(
+            service: service,
+            nextPageTrigger: nextPageLoadingTrigger.asObservable(),
+            reloadTrigger: .never())
         
-            .asDriver(onErrorJustReturn: [])
-            .startWith([AdsSection(identity: UUID().uuidString, items: [.activityIndicator])])
-            .scan([], accumulator: +)
+        
+    }
+        static func createAdsLoader(
+            service: AdsServiceType,
+            nextPageTrigger: Observable<Void>,
+            reloadTrigger: Observable<Void>
+        ) -> Driver<[AdsSection]> {
+            var page = 1
+            return nextPageTrigger
+                .flatMap { () -> Single<[Ad]> in
+                    service.getAdsList(page: page, limit: PAGE_LIMIT)
+                }
+                .do(onNext: { _ in
+                    
+                    page += 1
+                    
+                })
+                .map { ads -> [AdsSection] in
+                    return [
+                        AdsSection(
+                        identity: UUID().uuidString,
+                        items: ads.map(AdListItem.ad)
+                        )
+                   ]
+                }
+                .asDriver(onErrorJustReturn: [])
+                .scan([], accumulator: { old, new in
+                    return old.dropLast() + new + [AdsSection(identity: UUID().uuidString, items: [.activityIndicator])]
+                })
+                .startWith([AdsSection(identity: UUID().uuidString, items: [.activityIndicator])])
     }
 }
